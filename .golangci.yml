@@ -1,0 +1,29 @@
+run:
+  deadline: 5m
+  go: 1.18
+
+linters:
+  enable:
+  - revive
+  - goconst
+  - gofmt
+  - goimports
+  - misspell
+  - unparam
+  disable:
+  - deadcode
+
+linter-settings:
+  goconst:
+    min-len: 2
+    min-occurrences: 2
+
+issues:
+  exclude-use-default: false
+  exclude-rules:
+  - path: _test.go
+    linters:
+    - errcheck
+  - linters:
+    - revive
+    text: "package-comments: should have a package comment"
