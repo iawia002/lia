@@ -1,6 +1,8 @@
 package object
 
 import (
+	"reflect"
+	"sort"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -190,6 +192,133 @@ func TestGetLabel(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := GetLabel(tt.obj, tt.key); got != tt.wanted {
 				t.Errorf("GetLabel() = %v, want %v", got, tt.wanted)
+			}
+		})
+	}
+}
+
+func TestContainsFinalizer(t *testing.T) {
+	tests := []struct {
+		name      string
+		obj       metav1.Object
+		finalizer string
+		wanted    bool
+	}{
+		{
+			name: "contains test",
+			obj: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Finalizers: []string{"aa", "bb"},
+				},
+			},
+			finalizer: "aa",
+			wanted:    true,
+		},
+		{
+			name: "not contains test",
+			obj: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Finalizers: []string{"aa", "bb"},
+				},
+			},
+			finalizer: "cc",
+			wanted:    false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ContainsFinalizer(tt.obj, tt.finalizer); got != tt.wanted {
+				t.Errorf("ContainsFinalizer() = %v, want %v", got, tt.wanted)
+			}
+		})
+	}
+}
+
+func TestAddFinalizer(t *testing.T) {
+	tests := []struct {
+		name             string
+		obj              metav1.Object
+		finalizer        string
+		updated          bool
+		wantedFinalizers []string
+	}{
+		{
+			name: "updated test",
+			obj: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Finalizers: []string{"aa", "bb"},
+				},
+			},
+			finalizer:        "cc",
+			updated:          true,
+			wantedFinalizers: []string{"aa", "bb", "cc"},
+		},
+		{
+			name: "not updated test",
+			obj: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Finalizers: []string{"aa", "bb"},
+				},
+			},
+			finalizer:        "aa",
+			updated:          false,
+			wantedFinalizers: []string{"aa", "bb"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := AddFinalizer(tt.obj, tt.finalizer); got != tt.updated {
+				t.Errorf("AddFinalizer() = %v, want %v", got, tt.updated)
+			}
+			finalizers := tt.obj.GetFinalizers()
+			sort.Strings(finalizers)
+			if !reflect.DeepEqual(finalizers, tt.wantedFinalizers) {
+				t.Errorf("AddFinalizer() = %v, want %v", finalizers, tt.wantedFinalizers)
+			}
+		})
+	}
+}
+
+func TestRemoveFinalizer(t *testing.T) {
+	tests := []struct {
+		name             string
+		obj              metav1.Object
+		finalizer        string
+		updated          bool
+		wantedFinalizers []string
+	}{
+		{
+			name: "updated test",
+			obj: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Finalizers: []string{"aa", "bb"},
+				},
+			},
+			finalizer:        "aa",
+			updated:          true,
+			wantedFinalizers: []string{"bb"},
+		},
+		{
+			name: "not updated test",
+			obj: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Finalizers: []string{"aa", "bb"},
+				},
+			},
+			finalizer:        "cc",
+			updated:          false,
+			wantedFinalizers: []string{"aa", "bb"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := RemoveFinalizer(tt.obj, tt.finalizer); got != tt.updated {
+				t.Errorf("RemoveFinalizer() = %v, want %v", got, tt.updated)
+			}
+			finalizers := tt.obj.GetFinalizers()
+			sort.Strings(finalizers)
+			if !reflect.DeepEqual(finalizers, tt.wantedFinalizers) {
+				t.Errorf("RemoveFinalizer() = %v, want %v", finalizers, tt.wantedFinalizers)
 			}
 		})
 	}
