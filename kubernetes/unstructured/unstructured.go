@@ -20,8 +20,5 @@ func ConvertToUnstructured(obj interface{}) (*unstructured.Unstructured, error) 
 // 	node := &corev1.Node{}
 // 	ConvertToTyped(object, node)
 func ConvertToTyped(obj *unstructured.Unstructured, typedObj interface{}) error {
-	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), typedObj); err != nil {
-		return err
-	}
-	return nil
+	return runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), typedObj)
 }
