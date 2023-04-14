@@ -7,11 +7,7 @@ import (
 
 // ContainsAnnotation determines whether the object contains an annotation.
 func ContainsAnnotation(obj metav1.Object, key string) bool {
-	annotations := obj.GetAnnotations()
-	if annotations == nil {
-		return false
-	}
-	if _, ok := annotations[key]; ok {
+	if _, ok := obj.GetAnnotations()[key]; ok {
 		return true
 	}
 	return false
@@ -19,20 +15,12 @@ func ContainsAnnotation(obj metav1.Object, key string) bool {
 
 // GetAnnotation returns the annotation value of the object.
 func GetAnnotation(obj metav1.Object, key string) string {
-	annotations := obj.GetAnnotations()
-	if annotations == nil {
-		return ""
-	}
-	return annotations[key]
+	return obj.GetAnnotations()[key]
 }
 
 // ContainsLabel determines whether the object contains a label.
 func ContainsLabel(obj metav1.Object, key string) bool {
-	labels := obj.GetLabels()
-	if labels == nil {
-		return false
-	}
-	if _, ok := labels[key]; ok {
+	if _, ok := obj.GetLabels()[key]; ok {
 		return true
 	}
 	return false
@@ -40,11 +28,7 @@ func ContainsLabel(obj metav1.Object, key string) bool {
 
 // GetLabel returns the label value of the object.
 func GetLabel(obj metav1.Object, key string) string {
-	labels := obj.GetLabels()
-	if labels == nil {
-		return ""
-	}
-	return labels[key]
+	return obj.GetLabels()[key]
 }
 
 // ContainsFinalizer determines whether the object contains a finalizer.
