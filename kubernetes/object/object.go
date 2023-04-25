@@ -18,6 +18,23 @@ func GetAnnotation(obj metav1.Object, key string) string {
 	return obj.GetAnnotations()[key]
 }
 
+// AddAnnotation adds an annotation to the object, returns true if the object's annotations are updated.
+func AddAnnotation(obj metav1.Object, k, v string) bool {
+	annotations := obj.GetAnnotations()
+	if annotations == nil {
+		obj.SetAnnotations(map[string]string{k: v})
+		return true
+	}
+
+	if annotations[k] == v {
+		return false
+	}
+
+	annotations[k] = v
+	obj.SetAnnotations(annotations)
+	return true
+}
+
 // ContainsLabel determines whether the object contains a label.
 func ContainsLabel(obj metav1.Object, key string) bool {
 	if _, ok := obj.GetLabels()[key]; ok {
@@ -29,6 +46,23 @@ func ContainsLabel(obj metav1.Object, key string) bool {
 // GetLabel returns the label value of the object.
 func GetLabel(obj metav1.Object, key string) string {
 	return obj.GetLabels()[key]
+}
+
+// AddLabel adds a label to the object, returns true if the object's labels are updated.
+func AddLabel(obj metav1.Object, k, v string) bool {
+	labels := obj.GetLabels()
+	if labels == nil {
+		obj.SetLabels(map[string]string{k: v})
+		return true
+	}
+
+	if labels[k] == v {
+		return false
+	}
+
+	labels[k] = v
+	obj.SetLabels(labels)
+	return true
 }
 
 // ContainsFinalizer determines whether the object contains a finalizer.

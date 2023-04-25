@@ -103,6 +103,69 @@ func TestGetAnnotation(t *testing.T) {
 	}
 }
 
+func TestAddAnnotation(t *testing.T) {
+	tests := []struct {
+		name    string
+		obj     metav1.Object
+		k, v    string
+		updated bool
+		wanted  map[string]string
+	}{
+		{
+			name: "normal test",
+			obj: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"aa": "bb",
+					},
+				},
+			},
+			k:       "aa",
+			v:       "cc",
+			updated: true,
+			wanted: map[string]string{
+				"aa": "cc",
+			},
+		},
+		{
+			name: "not updated test",
+			obj: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"aa": "bb",
+					},
+				},
+			},
+			k:       "aa",
+			v:       "bb",
+			updated: false,
+			wanted: map[string]string{
+				"aa": "bb",
+			},
+		},
+		{
+			name:    "nil test",
+			obj:     &corev1.Node{},
+			k:       "aa",
+			v:       "bb",
+			updated: true,
+			wanted: map[string]string{
+				"aa": "bb",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := AddAnnotation(tt.obj, tt.k, tt.v); !reflect.DeepEqual(got, tt.updated) {
+				t.Errorf("AddAnnotation() = %v, want %v", got, tt.wanted)
+			}
+			if !reflect.DeepEqual(tt.obj.GetAnnotations(), tt.wanted) {
+				t.Errorf("AddAnnotation() = %v, want %v", tt.obj.GetAnnotations(), tt.wanted)
+			}
+		})
+	}
+}
+
 func TestContainsLabel(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -192,6 +255,69 @@ func TestGetLabel(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := GetLabel(tt.obj, tt.key); got != tt.wanted {
 				t.Errorf("GetLabel() = %v, want %v", got, tt.wanted)
+			}
+		})
+	}
+}
+
+func TestAddLabel(t *testing.T) {
+	tests := []struct {
+		name    string
+		obj     metav1.Object
+		k, v    string
+		updated bool
+		wanted  map[string]string
+	}{
+		{
+			name: "normal test",
+			obj: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"aa": "bb",
+					},
+				},
+			},
+			k:       "aa",
+			v:       "cc",
+			updated: true,
+			wanted: map[string]string{
+				"aa": "cc",
+			},
+		},
+		{
+			name: "not updated test",
+			obj: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"aa": "bb",
+					},
+				},
+			},
+			k:       "aa",
+			v:       "bb",
+			updated: false,
+			wanted: map[string]string{
+				"aa": "bb",
+			},
+		},
+		{
+			name:    "nil test",
+			obj:     &corev1.Node{},
+			k:       "aa",
+			v:       "bb",
+			updated: true,
+			wanted: map[string]string{
+				"aa": "bb",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := AddLabel(tt.obj, tt.k, tt.v); !reflect.DeepEqual(got, tt.updated) {
+				t.Errorf("AddLabel() = %v, want %v", got, tt.wanted)
+			}
+			if !reflect.DeepEqual(tt.obj.GetLabels(), tt.wanted) {
+				t.Errorf("AddLabel() = %v, want %v", tt.obj.GetLabels(), tt.wanted)
 			}
 		})
 	}
