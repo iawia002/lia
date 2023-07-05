@@ -5,6 +5,7 @@ import (
 )
 
 // ItemInArray returns true if an item is in the array.
+// Deprecated: Use the built-in slices.Contains function instead
 func ItemInArray[Item comparable](item Item, items []Item) bool {
 	for _, v := range items {
 		if item == v {
@@ -15,6 +16,7 @@ func ItemInArray[Item comparable](item Item, items []Item) bool {
 }
 
 // Min returns the smallest element in the array.
+// Deprecated: Use the built-in min function instead
 func Min[Item constraints.Ordered](items ...Item) Item {
 	min := items[0]
 	for i := 1; i < len(items); i++ {
@@ -26,6 +28,7 @@ func Min[Item constraints.Ordered](items ...Item) Item {
 }
 
 // Max returns the largest element in the array.
+// Deprecated: Use the built-in max function instead
 func Max[Item constraints.Ordered](items ...Item) Item {
 	max := items[0]
 	for i := 1; i < len(items); i++ {
