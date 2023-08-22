@@ -15,17 +15,17 @@ import (
 
 // Options defines options needed to generate a client.
 type Options struct {
-	resync      *time.Duration
+	syncPeriod  *time.Duration
 	scheme      *runtime.Scheme
 	cacheReader bool
 	ctx         context.Context
 }
 
-// WithResync sets the resync time option.
-// The default value is nil (equals to controller-runtime defaultResyncTime).
-func WithResync(resync *time.Duration) func(opts *Options) {
+// WithSyncPeriod sets the SyncPeriod time option.
+// The default value is nil.
+func WithSyncPeriod(syncPeriod *time.Duration) func(opts *Options) {
 	return func(opts *Options) {
-		opts.resync = resync
+		opts.syncPeriod = syncPeriod
 	}
 }
 
@@ -64,38 +64,44 @@ func NewClient(config *rest.Config, options ...func(*Options)) (client.Client, e
 		f(opts)
 	}
 
-	mapper, err := apiutil.NewDynamicRESTMapper(config)
+	httpClient, err := rest.HTTPClientFor(config)
+	if err != nil {
+		return nil, err
+	}
+	mapper, err := apiutil.NewDynamicRESTMapper(config, httpClient)
 	if err != nil {
 		return nil, err
 	}
 
-	writeClient, err := client.New(config, client.Options{
-		Scheme: opts.scheme,
-		Mapper: mapper,
-	})
+	clientOptions := client.Options{
+		HTTPClient: httpClient,
+		Scheme:     opts.scheme,
+		Mapper:     mapper,
+	}
+
+	if opts.cacheReader {
+		cacheClient, err := cache.New(config, cache.Options{
+			HTTPClient: httpClient,
+			Scheme:     opts.scheme,
+			Mapper:     mapper,
+			SyncPeriod: opts.syncPeriod,
+		})
+		if err != nil {
+			return nil, err
+		}
+		go cacheClient.Start(opts.ctx) // nolint
+		if !cacheClient.WaitForCacheSync(opts.ctx) {
+			return nil, errors.New("WaitForCacheSync failed")
+		}
+		clientOptions.Cache = &client.CacheOptions{
+			Reader:       cacheClient,
+			Unstructured: true,
+		}
+	}
+
+	genericClient, err := client.New(config, clientOptions)
 	if err != nil {
 		return nil, err
 	}
-
-	if !opts.cacheReader {
-		return writeClient, nil
-	}
-
-	cacheClient, err := cache.New(config, cache.Options{
-		Scheme: opts.scheme,
-		Mapper: mapper,
-		Resync: opts.resync,
-	})
-	if err != nil {
-		return nil, err
-	}
-	go cacheClient.Start(opts.ctx) // nolint
-	if !cacheClient.WaitForCacheSync(opts.ctx) {
-		return nil, errors.New("WaitForCacheSync failed")
-	}
-
-	return client.NewDelegatingClient(client.NewDelegatingClientInput{
-		CacheReader: cacheClient,
-		Client:      writeClient,
-	})
+	return genericClient, nil
 }
