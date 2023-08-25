@@ -22,20 +22,42 @@ func SetQPS(qps float32, burst int) func(c *rest.Config) {
 
 // BuildConfigFromFlags builds rest configs from a master url or a kube config filepath.
 func BuildConfigFromFlags(masterURL, kubeConfigPath string, options ...func(c *rest.Config)) (*rest.Config, error) {
-	c, err := clientcmd.BuildConfigFromFlags(masterURL, kubeConfigPath)
+	restConfig, err := clientcmd.BuildConfigFromFlags(masterURL, kubeConfigPath)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, opt := range options {
-		opt(c)
+		opt(restConfig)
 	}
-	if c.QPS == 0 {
-		c.QPS = DefaultQPS
+	if restConfig.QPS == 0 {
+		restConfig.QPS = DefaultQPS
 	}
-	if c.Burst == 0 {
-		c.Burst = DefaultBurst
+	if restConfig.Burst == 0 {
+		restConfig.Burst = DefaultBurst
+	}
+	return restConfig, nil
+}
+
+// BuildConfigFromKubeConfig builds rest configs from kube config data.
+func BuildConfigFromKubeConfig(kubeconfig []byte, options ...func(c *rest.Config)) (*rest.Config, error) {
+	clientConfig, err := clientcmd.NewClientConfigFromBytes(kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+	restConfig, err := clientConfig.ClientConfig()
+	if err != nil {
+		return nil, err
 	}
 
-	return c, nil
+	for _, opt := range options {
+		opt(restConfig)
+	}
+	if restConfig.QPS == 0 {
+		restConfig.QPS = DefaultQPS
+	}
+	if restConfig.Burst == 0 {
+		restConfig.Burst = DefaultBurst
+	}
+	return restConfig, nil
 }
