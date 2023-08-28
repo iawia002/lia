@@ -41,11 +41,7 @@ func BuildConfigFromFlags(masterURL, kubeConfigPath string, options ...func(c *r
 
 // BuildConfigFromKubeConfig builds rest configs from kube config data.
 func BuildConfigFromKubeConfig(kubeconfig []byte, options ...func(c *rest.Config)) (*rest.Config, error) {
-	clientConfig, err := clientcmd.NewClientConfigFromBytes(kubeconfig)
-	if err != nil {
-		return nil, err
-	}
-	restConfig, err := clientConfig.ClientConfig()
+	restConfig, err := clientcmd.RESTConfigFromKubeConfig(kubeconfig)
 	if err != nil {
 		return nil, err
 	}
