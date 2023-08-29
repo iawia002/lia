@@ -35,7 +35,7 @@ func NewUnstructuredTypedClient(gvk schema.GroupVersionKind, opts ...func(*optio
 			}
 			o.config = inClusterConfig
 		}
-		cache, err := genericclient.NewClient(o.config)
+		cache, err := genericclient.NewCache(o.config)
 		if err != nil {
 			return nil, err
 		}
