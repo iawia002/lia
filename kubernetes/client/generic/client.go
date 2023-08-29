@@ -3,8 +3,10 @@ package generic
 import (
 	"context"
 	"errors"
+	"net/http"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -19,6 +21,8 @@ type Options struct {
 	scheme      *runtime.Scheme
 	cacheReader bool
 	ctx         context.Context
+	httpClient  *http.Client
+	mapper      meta.RESTMapper
 }
 
 // WithSyncPeriod sets the SyncPeriod time option.
@@ -53,6 +57,61 @@ func WithContext(ctx context.Context) func(opts *Options) {
 	}
 }
 
+// WithHTTPClient sets the HTTPClient for the client.
+func WithHTTPClient(httpClient *http.Client) func(opts *Options) {
+	return func(opts *Options) {
+		opts.httpClient = httpClient
+	}
+}
+
+// WithMapper sets the Mapper for the client.
+func WithMapper(mapper meta.RESTMapper) func(opts *Options) {
+	return func(opts *Options) {
+		opts.mapper = mapper
+	}
+}
+
+// NewCache returns a controller-runtime cache client implementation.
+func NewCache(config *rest.Config, options ...func(*Options)) (cache.Cache, error) {
+	opts := &Options{
+		scheme: scheme.Scheme,
+		ctx:    context.Background(),
+	}
+	for _, f := range options {
+		f(opts)
+	}
+
+	if opts.httpClient == nil {
+		httpClient, err := rest.HTTPClientFor(config)
+		if err != nil {
+			return nil, err
+		}
+		opts.httpClient = httpClient
+	}
+	if opts.mapper == nil {
+		mapper, err := apiutil.NewDynamicRESTMapper(config, opts.httpClient)
+		if err != nil {
+			return nil, err
+		}
+		opts.mapper = mapper
+	}
+
+	cacheClient, err := cache.New(config, cache.Options{
+		HTTPClient: opts.httpClient,
+		Scheme:     opts.scheme,
+		Mapper:     opts.mapper,
+		SyncPeriod: opts.syncPeriod,
+	})
+	if err != nil {
+		return nil, err
+	}
+	go cacheClient.Start(opts.ctx) // nolint
+	if !cacheClient.WaitForCacheSync(opts.ctx) {
+		return nil, errors.New("WaitForCacheSync failed")
+	}
+	return cacheClient, nil
+}
+
 // NewClient returns a controller-runtime generic Client implementation.
 func NewClient(config *rest.Config, options ...func(*Options)) (client.Client, error) {
 	opts := &Options{
@@ -64,44 +123,42 @@ func NewClient(config *rest.Config, options ...func(*Options)) (client.Client, e
 		f(opts)
 	}
 
-	httpClient, err := rest.HTTPClientFor(config)
-	if err != nil {
-		return nil, err
-	}
-	mapper, err := apiutil.NewDynamicRESTMapper(config, httpClient)
-	if err != nil {
-		return nil, err
-	}
-
-	clientOptions := client.Options{
-		HTTPClient: httpClient,
-		Scheme:     opts.scheme,
-		Mapper:     mapper,
-	}
-
-	if opts.cacheReader {
-		cacheClient, err := cache.New(config, cache.Options{
-			HTTPClient: httpClient,
-			Scheme:     opts.scheme,
-			Mapper:     mapper,
-			SyncPeriod: opts.syncPeriod,
-		})
+	if opts.httpClient == nil {
+		httpClient, err := rest.HTTPClientFor(config)
 		if err != nil {
 			return nil, err
 		}
-		go cacheClient.Start(opts.ctx) // nolint
-		if !cacheClient.WaitForCacheSync(opts.ctx) {
-			return nil, errors.New("WaitForCacheSync failed")
+		opts.httpClient = httpClient
+	}
+	if opts.mapper == nil {
+		mapper, err := apiutil.NewDynamicRESTMapper(config, opts.httpClient)
+		if err != nil {
+			return nil, err
+		}
+		opts.mapper = mapper
+	}
+
+	clientOptions := client.Options{
+		HTTPClient: opts.httpClient,
+		Scheme:     opts.scheme,
+		Mapper:     opts.mapper,
+	}
+
+	if opts.cacheReader {
+		cacheClient, err := NewCache(config,
+			WithHTTPClient(opts.httpClient),
+			WithScheme(opts.scheme),
+			WithMapper(opts.mapper),
+			WithSyncPeriod(opts.syncPeriod),
+			WithContext(opts.ctx),
+		)
+		if err != nil {
+			return nil, err
 		}
 		clientOptions.Cache = &client.CacheOptions{
 			Reader:       cacheClient,
 			Unstructured: true,
 		}
 	}
-
-	genericClient, err := client.New(config, clientOptions)
-	if err != nil {
-		return nil, err
-	}
-	return genericClient, nil
+	return client.New(config, clientOptions)
 }

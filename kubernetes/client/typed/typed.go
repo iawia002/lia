@@ -39,7 +39,7 @@ func NewTypedClient(gvk schema.GroupVersionKind, opts ...func(*options)) (Client
 			}
 			o.config = inClusterConfig
 		}
-		cache, err := genericclient.NewClient(o.config, genericclient.WithScheme(o.scheme))
+		cache, err := genericclient.NewCache(o.config, genericclient.WithScheme(o.scheme))
 		if err != nil {
 			return nil, err
 		}

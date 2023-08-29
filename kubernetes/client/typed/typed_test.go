@@ -6,9 +6,9 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -24,7 +24,7 @@ var (
 func TestTypedGet(t *testing.T) {
 	tests := []struct {
 		name   string
-		objs   []client.Object
+		objs   []runtime.Object
 		gvk    schema.GroupVersionKind
 		key    types.NamespacedName
 		isErr  bool
@@ -32,7 +32,7 @@ func TestTypedGet(t *testing.T) {
 	}{
 		{
 			name: "normal test",
-			objs: []client.Object{pod1},
+			objs: []runtime.Object{pod1},
 			gvk:  corev1.SchemeGroupVersion.WithKind("Pod"),
 			key: types.NamespacedName{
 				Name: pod1Name,
@@ -41,7 +41,7 @@ func TestTypedGet(t *testing.T) {
 		},
 		{
 			name: "not exists test",
-			objs: []client.Object{pod1},
+			objs: []runtime.Object{pod1},
 			gvk:  corev1.SchemeGroupVersion.WithKind("Pod"),
 			key: types.NamespacedName{
 				Name: "aaa",
@@ -50,7 +50,7 @@ func TestTypedGet(t *testing.T) {
 		},
 		{
 			name: "wrong type test",
-			objs: []client.Object{pod1},
+			objs: []runtime.Object{pod1},
 			gvk:  corev1.SchemeGroupVersion.WithKind("Pod1"),
 			key: types.NamespacedName{
 				Name: pod1Name,
@@ -60,7 +60,7 @@ func TestTypedGet(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := fake.NewClientBuilder().WithObjects(tt.objs...).Build()
+			c := fake.NewFakeClient(tt.objs...)
 			typedClient, _ := NewTypedClient(tt.gvk, WithClientReader(c))
 
 			got, err := typedClient.Get(context.TODO(), tt.key)
@@ -81,27 +81,27 @@ func TestTypedGet(t *testing.T) {
 func TestTypedList(t *testing.T) {
 	tests := []struct {
 		name   string
-		objs   []client.Object
+		objs   []runtime.Object
 		gvk    schema.GroupVersionKind
 		isErr  bool
 		wanted int
 	}{
 		{
 			name:   "normal test",
-			objs:   []client.Object{pod1},
+			objs:   []runtime.Object{pod1},
 			gvk:    corev1.SchemeGroupVersion.WithKind("Pod"),
 			wanted: 1,
 		},
 		{
 			name:  "wrong type test",
-			objs:  []client.Object{pod1},
+			objs:  []runtime.Object{pod1},
 			gvk:   corev1.SchemeGroupVersion.WithKind("Pod1"),
 			isErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := fake.NewClientBuilder().WithObjects(tt.objs...).Build()
+			c := fake.NewFakeClient(tt.objs...)
 			typedClient, _ := NewTypedClient(tt.gvk, WithClientReader(c))
 
 			got, err := typedClient.List(context.TODO(), metav1.NamespaceAll)
