@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
@@ -16,8 +15,7 @@ import (
 type unstructuredTypedClient struct {
 	client  client.Reader
 	gvk     schema.GroupVersionKind
-	obj     runtime.Object
-	listObj runtime.Object
+	listGVK schema.GroupVersionKind
 }
 
 // NewUnstructuredTypedClient returns a new Client implementation that returns all objects as Unstructured objects.
@@ -42,27 +40,21 @@ func NewUnstructuredTypedClient(gvk schema.GroupVersionKind, opts ...func(*optio
 		o.cache = cache
 	}
 
-	obj := &unstructured.Unstructured{}
-	obj.SetGroupVersionKind(gvk)
-
-	listObj := &unstructured.UnstructuredList{}
-	listObj.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   gvk.Group,
-		Version: gvk.Version,
-		Kind:    gvk.Kind + "List",
-	})
-
 	return &unstructuredTypedClient{
-		client:  o.cache,
-		gvk:     gvk,
-		obj:     obj,
-		listObj: listObj,
+		client: o.cache,
+		gvk:    gvk,
+		listGVK: schema.GroupVersionKind{
+			Group:   gvk.Group,
+			Version: gvk.Version,
+			Kind:    gvk.Kind + "List",
+		},
 	}, nil
 }
 
 // Get retrieves an object for the given object key.
 func (t *unstructuredTypedClient) Get(ctx context.Context, key types.NamespacedName, opts ...client.GetOption) (client.Object, error) {
-	obj := t.obj.(client.Object)
+	obj := &unstructured.Unstructured{}
+	obj.SetGroupVersionKind(t.gvk)
 	if err := t.client.Get(ctx, key, obj, opts...); err != nil {
 		return nil, err
 	}
@@ -71,7 +63,8 @@ func (t *unstructuredTypedClient) Get(ctx context.Context, key types.NamespacedN
 
 // List retrieves list of objects for a given namespace and list options.
 func (t *unstructuredTypedClient) List(ctx context.Context, namespace string, opts ...client.ListOption) (client.ObjectList, error) {
-	listObj := t.listObj.(client.ObjectList)
+	listObj := &unstructured.UnstructuredList{}
+	listObj.SetGroupVersionKind(t.listGVK)
 	if err := t.client.List(ctx, listObj, append(opts, client.InNamespace(namespace))...); err != nil {
 		return nil, err
 	}
