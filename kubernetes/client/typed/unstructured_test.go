@@ -100,7 +100,8 @@ func TestUnstructuredList(t *testing.T) {
 			if tt.isErr {
 				return
 			}
-			pods := got.(*unstructured.UnstructuredList)
+			pods := &corev1.PodList{}
+			_ = unstructuredutils.ConvertToTyped(got.(*unstructured.UnstructuredList), pods)
 			if len(pods.Items) != tt.wanted {
 				t.Errorf("List() = %v, want %v", len(pods.Items), tt.wanted)
 			}
