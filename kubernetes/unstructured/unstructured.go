@@ -22,7 +22,7 @@ func ConvertToUnstructured(obj interface{}) (*unstructured.Unstructured, error) 
 //	ConvertToTyped(object, node)
 //
 //nolint:gofmt,goimports
-func ConvertToTyped(obj *unstructured.Unstructured, typedObj interface{}) error {
+func ConvertToTyped(obj runtime.Unstructured, typedObj interface{}) error {
 	return runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), typedObj)
 }
 
