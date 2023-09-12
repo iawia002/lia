@@ -5,6 +5,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func TestConvertToUnstructured(t *testing.T) {
@@ -58,15 +60,18 @@ metadata:
 func TestConvertToTyped(t *testing.T) {
 	tests := []struct {
 		name     string
-		obj      interface{}
+		obj      runtime.Unstructured
 		typedObj interface{}
 		isErr    bool
 	}{
 		{
 			name: "obj test",
-			obj: &corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "test",
+			obj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"kind": "Namespace",
+					"metadata": map[string]interface{}{
+						"name": "test",
+					},
 				},
 			},
 			typedObj: &corev1.Namespace{},
@@ -74,11 +79,17 @@ func TestConvertToTyped(t *testing.T) {
 		},
 		{
 			name: "list test",
-			obj: &corev1.NamespaceList{
-				Items: []corev1.Namespace{
+			obj: &unstructured.UnstructuredList{
+				Object: map[string]interface{}{
+					"kind": "List",
+				},
+				Items: []unstructured.Unstructured{
 					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "test",
+						Object: map[string]interface{}{
+							"kind": "Namespace",
+							"metadata": map[string]interface{}{
+								"name": "test",
+							},
 						},
 					},
 				},
@@ -89,8 +100,7 @@ func TestConvertToTyped(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			unstructuredObj, _ := ConvertToUnstructured(tt.obj)
-			if err := ConvertToTyped(unstructuredObj, tt.typedObj); tt.isErr != (err != nil) {
+			if err := ConvertToTyped(tt.obj, tt.typedObj); tt.isErr != (err != nil) {
 				t.Errorf("%s ConvertToTyped() unexpected error: %v", tt.name, err)
 			}
 		})
