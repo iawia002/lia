@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	toolscache "k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -17,12 +18,15 @@ import (
 
 // Options defines options needed to generate a client.
 type Options struct {
-	syncPeriod  *time.Duration
-	scheme      *runtime.Scheme
-	cacheReader bool
-	ctx         context.Context
-	httpClient  *http.Client
-	mapper      meta.RESTMapper
+	syncPeriod        *time.Duration
+	scheme            *runtime.Scheme
+	cacheReader       bool
+	ctx               context.Context
+	httpClient        *http.Client
+	mapper            meta.RESTMapper
+	defaultNamespaces map[string]cache.Config
+	defaultTransform  toolscache.TransformFunc
+	byObject          map[client.Object]cache.ByObject
 }
 
 // WithSyncPeriod sets the SyncPeriod time option.
@@ -71,6 +75,27 @@ func WithMapper(mapper meta.RESTMapper) func(opts *Options) {
 	}
 }
 
+// WithDefaultNamespaces sets the DefaultNamespaces for the cache client.
+func WithDefaultNamespaces(defaultNamespaces map[string]cache.Config) func(opts *Options) {
+	return func(opts *Options) {
+		opts.defaultNamespaces = defaultNamespaces
+	}
+}
+
+// WithDefaultTransform sets the DefaultTransform for the cache client.
+func WithDefaultTransform(defaultTransform toolscache.TransformFunc) func(opts *Options) {
+	return func(opts *Options) {
+		opts.defaultTransform = defaultTransform
+	}
+}
+
+// WithByObject sets the ByObject for the cache client.
+func WithByObject(byObject map[client.Object]cache.ByObject) func(opts *Options) {
+	return func(opts *Options) {
+		opts.byObject = byObject
+	}
+}
+
 // NewCache returns a controller-runtime cache client implementation.
 func NewCache(config *rest.Config, options ...func(*Options)) (cache.Cache, error) {
 	opts := &Options{
@@ -97,10 +122,13 @@ func NewCache(config *rest.Config, options ...func(*Options)) (cache.Cache, erro
 	}
 
 	cacheClient, err := cache.New(config, cache.Options{
-		HTTPClient: opts.httpClient,
-		Scheme:     opts.scheme,
-		Mapper:     opts.mapper,
-		SyncPeriod: opts.syncPeriod,
+		HTTPClient:        opts.httpClient,
+		Scheme:            opts.scheme,
+		Mapper:            opts.mapper,
+		SyncPeriod:        opts.syncPeriod,
+		DefaultNamespaces: opts.defaultNamespaces,
+		DefaultTransform:  opts.defaultTransform,
+		ByObject:          opts.byObject,
 	})
 	if err != nil {
 		return nil, err
@@ -151,6 +179,9 @@ func NewClient(config *rest.Config, options ...func(*Options)) (client.Client, e
 			WithMapper(opts.mapper),
 			WithSyncPeriod(opts.syncPeriod),
 			WithContext(opts.ctx),
+			WithDefaultNamespaces(opts.defaultNamespaces),
+			WithDefaultTransform(opts.defaultTransform),
+			WithByObject(opts.byObject),
 		)
 		if err != nil {
 			return nil, err
