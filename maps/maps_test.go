@@ -67,3 +67,49 @@ func TestSetNestedField(t *testing.T) {
 		})
 	}
 }
+
+func TestGetNestedField(t *testing.T) {
+	tests := []struct {
+		name   string
+		src    map[string]interface{}
+		key    string
+		wanted interface{}
+	}{
+		{
+			name: "normal test",
+			src: map[string]interface{}{
+				"aa": map[string]interface{}{
+					"bb": 1,
+				},
+			},
+			key:    "aa.bb",
+			wanted: 1,
+		},
+		{
+			name: "not map test",
+			src: map[string]interface{}{
+				"aa": 1,
+			},
+			key:    "aa.bb",
+			wanted: nil,
+		},
+		{
+			name: "wrong path test",
+			src: map[string]interface{}{
+				"aa": map[string]interface{}{
+					"bb": 1,
+				},
+			},
+			key:    "aa.cc",
+			wanted: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v := GetNestedField(tt.src, tt.key)
+			if !reflect.DeepEqual(v, tt.wanted) {
+				t.Errorf("GetNestedField() = %v, want %v", v, tt.wanted)
+			}
+		})
+	}
+}
