@@ -11,14 +11,14 @@ import (
 // worker returns a long-running function that will dequeue item from the given queue and process it using
 // the given function, will re-queue it if an error happens when processing it, otherwise marks it as done.
 // maxRetry = 0 means no limit.
-func worker(queue workqueue.RateLimitingInterface, syncer func(string) error, duration time.Duration, maxRetry int) func() {
+func worker[T comparable](queue workqueue.TypedRateLimitingInterface[T], syncer func(T) error, duration time.Duration, maxRetry int) func() {
 	workFunc := func() bool {
 		key, quit := queue.Get()
 		if quit {
 			return true
 		}
 		defer queue.Done(key)
-		err := syncer(key.(string))
+		err := syncer(key)
 		if err == nil {
 			queue.Forget(key)
 			return false
@@ -35,7 +35,7 @@ func worker(queue workqueue.RateLimitingInterface, syncer func(string) error, du
 
 		queue.Forget(key)
 		runtime.HandleError(err)
-		klog.Infof("obj %s exceeds max retry limit %d", key, maxRetry)
+		klog.Infof("obj %v exceeds max retry limit %d", key, maxRetry)
 		return false
 	}
 
@@ -50,12 +50,12 @@ func worker(queue workqueue.RateLimitingInterface, syncer func(string) error, du
 
 // RateLimitedWorker returns a long-running worker function that will re-queue the item by AddRateLimited function
 // if an error happens when processing it.
-func RateLimitedWorker(queue workqueue.RateLimitingInterface, syncer func(string) error, maxRetry int) func() {
+func RateLimitedWorker[T comparable](queue workqueue.TypedRateLimitingInterface[T], syncer func(T) error, maxRetry int) func() {
 	return worker(queue, syncer, 0, maxRetry)
 }
 
 // DelayingWorker returns a long-running worker function that will re-queue the item after the given duration has
 // passed if an error happens when processing it.
-func DelayingWorker(queue workqueue.RateLimitingInterface, syncer func(string) error, duration time.Duration, maxRetry int) func() {
+func DelayingWorker[T comparable](queue workqueue.TypedRateLimitingInterface[T], syncer func(T) error, duration time.Duration, maxRetry int) func() {
 	return worker(queue, syncer, duration, maxRetry)
 }
